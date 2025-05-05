@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Frontend Next.js
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    volumes:
+      - frontend_data:/app/.next/cache
+    depends_on:
+      - supabase
+    networks:
+      - app_network
+
+  # Supabase
+  supabase:
+    image: supabase/supabase-local:latest
+    restart: always
+    ports:
+      - "54321:54321" # API
+      - "54322:54322" # Studio
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      STUDIO_PORT: 54322
+      API_PORT: 54321
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    volumes:
+      - supabase_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/supabase/migrations
+    networks:
+      - app_network
+
+  # Nginx para proxy reverso (opcional)
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/www:/var/www/html
+    depends_on:
+      - frontend
+      - supabase
+    networks:
+      - app_network
+
+volumes:
+  frontend_data:
+  supabase_data:
+
+networks:
+  app_network:
+    driver: bridge

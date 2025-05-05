@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Frontend Next.js - Canal de Denúncias
+  canal_denuncias:
+    image: node:20-alpine
+    ports:
+      - "3001:3000" # Porta 3001 externa para evitar conflitos com outros serviços
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=https://udvchlncluoznnjmafru.supabase.co
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkdmNobG5jbHVvem5uam1hZnJ1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTUwNTQyNiwiZXhwIjoyMDYxMDgxNDI2fQ.zFzcClD4p5dVQojgzRQKRYJhArWgl2IHCMIHTTRXic4
+    volumes:
+      - /data/canal_denuncias_app:/app # Mapeia a pasta do host para /app no container
+    command: >
+      sh -c "echo 'Container do Canal de Denúncias iniciado. Aguardando upload dos arquivos da aplicação via script.'
+             tail -f /dev/null" # Mantém o container rodando aguardando os arquivos
+    networks:
+      - automatiza
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.canal_denuncias.rule=Host(`seucontatocerto.com.br`)
+        - traefik.http.routers.canal_denuncias.entrypoints=websecure
+        - traefik.http.routers.canal_denuncias.priority=1
+        - traefik.http.routers.canal_denuncias.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.canal_denuncias.service=canal_denuncias
+        - traefik.http.services.canal_denuncias.loadbalancer.server.port=3000
+        - traefik.http.services.canal_denuncias.loadbalancer.passHostHeader=1
+
+# A definição do volume nomeado foi removida, pois agora usamos um mapeamento de host.
+
+networks:
+  automatiza:
+    external: true
